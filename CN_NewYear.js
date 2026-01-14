@@ -1,247 +1,186 @@
 (function() {
     // ================= 配置区域 =================
+    // 1. 生效日期 (这里预设了包含当前日期的范围，方便您立刻看到效果)
     const startDate = new Date("2026-01-01"); 
-    const endDate = new Date("2026-02-28");
+    const endDate = new Date("2026-02-28"); // 或者是每年的 12-01 到 12-31
 
-    // 挂件图片 (建议使用透明背景 GIF)
-    const leftGif = "https://img.icons8.com/color/96/chinese-new-year.png";
-    const rightGif = "https://img.icons8.com/color/96/year-of-horse.png";
+    // 2. 挂件配置 (精选的透明背景圣诞素材)
+    // 左边：装满礼物的圣诞袜
+    const leftGif = "https://img.icons8.com/external-flaticons-lineal-color-flat-icons/96/external-christmas-stocking-christmas-flaticons-lineal-color-flat-icons-2.png";
+    // 右边：圣诞铃铛与冬青
+    const rightGif = "https://img.icons8.com/color/96/christmas-bell.png";
+    // 彩蛋：飞行的圣诞老人 (GIF)
+    const santaGif = "https://img.icons8.com/external-yogi-aprelliyanto-flat-yogi-aprelliyanto/96/external-sleigh-christmas-yogi-aprelliyanto-flat-yogi-aprelliyanto.png";
 
     // ===========================================
-    // 逻辑执行
+    // 逻辑执行区域
     // ===========================================
     const now = new Date();
     if (now < startDate || now > endDate) return;
 
-    // --- 模块一：重力感应挂件 ---
-    function initGyroDecorations() {
-        if (document.getElementById('cny-style')) return;
+    // --- 模块一：物理重力雪花 (Canvas) ---
+    function initSnow() {
+        const canvas = document.createElement('canvas');
+        canvas.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:99997;pointer-events:none;";
+        document.body.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+        
+        let w = canvas.width = window.innerWidth;
+        let h = canvas.height = window.innerHeight;
+        window.addEventListener('resize', () => { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; });
 
-        // 定义基础样式 (默认有轻微的风吹摆动，以防没有陀螺仪数据时是僵硬的)
+        const particles = [];
+        const maxParticles = window.innerWidth < 768 ? 50 : 150; // 手机端减少雪花数量
+
+        class Flake {
+            constructor() {
+                this.init();
+            }
+            init() {
+                this.x = Math.random() * w;
+                this.y = Math.random() * h; // 初始随机分布
+                this.r = Math.random() * 3 + 1; // 雪花半径
+                this.d = Math.random() * maxParticles; // 密度因子
+                this.a = Math.random() * 0.5 + 0.3; // 透明度
+                this.vx = Math.random() * 1 - 0.5; // 水平飘动
+                this.vy = Math.random() * 1 + 1; // 下落速度
+            }
+            update() {
+                this.y += this.vy;
+                this.x += this.vx;
+                
+                // 简单的风力模拟
+                this.x += Math.sin(this.y * 0.01) * 0.2;
+
+                // 触底或出界重置
+                if (this.y > h || this.x > w || this.x < 0) {
+                    this.x = Math.random() * w;
+                    this.y = -10; // 从顶部重新落下
+                }
+            }
+            draw() {
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.a})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < maxParticles; i++) particles.push(new Flake());
+
+        function loop() {
+            ctx.clearRect(0, 0, w, h);
+            particles.forEach(p => { p.update(); p.draw(); });
+            requestAnimationFrame(loop);
+        }
+        loop();
+    }
+
+    // --- 模块二：重力感应挂饰 (继承自V5的优秀逻辑) ---
+    function initOrnaments() {
+        if (document.getElementById('xmas-style')) return;
+
         const style = document.createElement('style');
-        style.id = 'cny-style';
+        style.id = 'xmas-style';
         style.innerHTML = `
-            .cny-item {
+            .xmas-item {
                 position: fixed; top: 0; z-index: 99999;
-                width: 120px; transition: transform 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-                filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+                width: 100px; transition: transform 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
                 will-change: transform;
             }
-            .cny-left { left: 10px; transform-origin: top center; }
-            .cny-right { right: 10px; transform-origin: top center; }
+            .xmas-left { left: 15px; transform-origin: top center; }
+            .xmas-right { right: 15px; transform-origin: top center; }
             
-            /* 默认呼吸动画 (当没有重力感应时生效) */
-            @keyframes idleSwing { 
+            /* 默认摆动动画 */
+            @keyframes gentleSwing { 
                 0% { transform: rotate(0deg); } 
-                50% { transform: rotate(3deg); } 
+                50% { transform: rotate(4deg); } 
                 100% { transform: rotate(0deg); } 
             }
-            .cny-idle { animation: idleSwing 4s infinite ease-in-out; }
+            .xmas-idle { animation: gentleSwing 5s infinite ease-in-out; }
 
             @media (max-width: 768px) {
-                .cny-item { width: 60px; top: -2px; } 
-                .cny-left { left: 5px; } .cny-right { right: 5px; }
+                .xmas-item { width: 55px; top: -2px; } 
+                .xmas-left { left: 5px; } .xmas-right { right: 5px; }
             }
         `;
         document.head.appendChild(style);
 
         const lImg = document.createElement('img');
-        lImg.src = leftGif; lImg.className = 'cny-item cny-left cny-idle';
-        lImg.id = 'cny-l';
+        lImg.src = leftGif; lImg.className = 'xmas-item xmas-left xmas-idle';
         document.body.appendChild(lImg);
 
         const rImg = document.createElement('img');
-        rImg.src = rightGif; rImg.className = 'cny-item cny-right cny-idle';
-        rImg.id = 'cny-r';
+        rImg.src = rightGif; rImg.className = 'xmas-item xmas-right xmas-idle';
         document.body.appendChild(rImg);
 
-        // === 核心：重力感应监听 ===
+        // 重力感应逻辑
         let currentRotation = 0;
-        let targetRotation = 0;
-        
-        // 监听设备运动
         window.addEventListener('devicemotion', (event) => {
             const acc = event.accelerationIncludingGravity;
             if (!acc) return;
-
-            // 获取横向重力分量 (X轴)
-            // Android 和 iOS 的方向可能相反，这里做一个通用处理
             const x = acc.x || 0;
-            
-            // 只有当检测到明显的倾斜/摇晃时才接管动画
             if (Math.abs(x) > 0.5) {
-                // 移除默认的 CSS 动画
-                lImg.classList.remove('cny-idle');
-                rImg.classList.remove('cny-idle');
-
-                // 计算目标角度 (放大系数 5，让晃动更明显)
-                // 限制最大角度 ±45度，防止甩飞
-                targetRotation = Math.max(-45, Math.min(45, x * 5));
-                
-                // 简单的平滑插值
+                lImg.classList.remove('xmas-idle');
+                rImg.classList.remove('xmas-idle');
+                const targetRotation = Math.max(-40, Math.min(40, x * 6));
                 currentRotation += (targetRotation - currentRotation) * 0.1;
-
-                // 应用旋转
                 lImg.style.transform = `rotate(${currentRotation}deg)`;
-                // 右边挂件稍微延迟一点/反向一点，增加错落感
-                rImg.style.transform = `rotate(${currentRotation * 0.9}deg)`;
+                rImg.style.transform = `rotate(${currentRotation * 0.8}deg)`;
             }
         }, false);
     }
 
-    // --- 模块二：剧本式红金烟花 ---
-    function initScenarioFireworks() {
-        if (sessionStorage.getItem('cny_fireworks_v5_played')) return;
-        sessionStorage.setItem('cny_fireworks_v5_played', '1');
+    // --- 模块三：圣诞老人飞越彩蛋 ---
+    function initSantaFlyby() {
+        // 使用 SessionStorage 确保每次打开浏览器只飞一次，避免烦人
+        if (sessionStorage.getItem('xmas_santa_flown')) return;
+        sessionStorage.setItem('xmas_santa_flown', '1');
 
-        const canvas = document.createElement('canvas');
-        canvas.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:99998;pointer-events:none;";
-        document.body.appendChild(canvas);
-        const ctx = canvas.getContext('2d');
-        let w = canvas.width = window.innerWidth;
-        let h = canvas.height = window.innerHeight;
-        
-        window.addEventListener('resize', () => { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; });
+        const style = document.createElement('style');
+        style.innerHTML = `
+            @keyframes flyAcross {
+                0% { left: -150px; transform: translateY(0); }
+                25% { transform: translateY(20px); }
+                50% { transform: translateY(0); }
+                75% { transform: translateY(-20px); }
+                100% { left: 100vw; transform: translateY(0); }
+            }
+            .santa-sleigh {
+                position: fixed;
+                top: 15%; /* 屏幕上方 15% 处飞行 */
+                z-index: 99998;
+                width: 120px;
+                opacity: 0.9;
+                pointer-events: none;
+                animation: flyAcross 12s linear forwards; /* 12秒飞完全程 */
+            }
+            @media (max-width: 768px) { .santa-sleigh { width: 80px; top: 20%; } }
+        `;
+        document.head.appendChild(style);
 
-        let particles = [];
-        let rockets = [];
-        let phase = 0; // 0: 等待, 1: 巨型烟花, 2: 散花
-        let smallShotsCount = 0;
+        const santa = document.createElement('img');
+        santa.src = santaGif;
+        santa.className = 'santa-sleigh';
+        document.body.appendChild(santa);
 
-        const GRAVITY = 0.05;
-        const FRICTION = 0.96;
-
-        class Particle {
-            constructor(x, y, isBig) {
-                this.x = x; this.y = y;
-                const angle = Math.random() * Math.PI * 2;
-                // 大烟花爆发力更强
-                const force = isBig ? (Math.random() * 8 + 3) : (Math.random() * 4 + 2);
-                this.vx = Math.cos(angle) * force;
-                this.vy = Math.sin(angle) * force;
-                
-                // 【核心颜色逻辑】红金混合
-                // 70% 概率是红色系，30% 概率是金色系
-                const isGold = Math.random() > 0.7;
-                if (isGold) {
-                    this.hue = Math.random() * 10 + 40; // 金色 (Hue 40-50)
-                    this.lightness = Math.random() * 40 + 50; // 亮一点
-                } else {
-                    this.hue = Math.random() * 10 + 355; // 红色 (Hue 355-0-5)
-                    if (this.hue > 360) this.hue -= 360;
-                    this.lightness = 50;
-                }
-                
-                this.alpha = 1;
-                this.decay = Math.random() * 0.01 + 0.005;
-            }
-            update() {
-                this.vx *= FRICTION; this.vy *= FRICTION; this.vy += GRAVITY;
-                this.x += this.vx; this.y += this.vy; this.alpha -= this.decay;
-            }
-            draw() {
-                ctx.globalAlpha = this.alpha;
-                // 使用 lighter 混合模式，让红金重叠处发光
-                ctx.globalCompositeOperation = 'lighter';
-                ctx.fillStyle = `hsl(${this.hue}, 100%, ${this.lightness}%)`;
-                ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI * 2); ctx.fill();
-                ctx.globalCompositeOperation = 'source-over';
-            }
-        }
-
-        class Rocket {
-            constructor(isBig) {
-                this.isBig = isBig;
-                this.x = isBig ? w / 2 : Math.random() * w; // 大烟花强制居中
-                this.y = h;
-                // 大烟花炸得更高
-                this.targetY = isBig ? h * 0.2 : (Math.random() * h * 0.4 + h * 0.1);
-                this.vy = isBig ? -18 : -(Math.random() * 5 + 10);
-                this.trail = [];
-                this.exploded = false;
-            }
-            update() {
-                this.y += this.vy;
-                this.vy += GRAVITY; 
-                this.trail.push({x: this.x, y: this.y});
-                if(this.trail.length > 5) this.trail.shift();
-
-                // 到达最高点附近爆炸
-                if (this.vy >= -2 && !this.exploded) {
-                    this.explode();
-                    return false;
-                }
-                return true;
-            }
-            draw() {
-                ctx.strokeStyle = '#ffdd00'; // 拖尾总是金色
-                ctx.lineWidth = this.isBig ? 4 : 2;
-                ctx.beginPath();
-                if(this.trail.length) {
-                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
-                    for(let t of this.trail) ctx.lineTo(t.x, t.y);
-                }
-                ctx.stroke();
-            }
-            explode() {
-                this.exploded = true;
-                // 大烟花产生 300 个粒子，小烟花 80 个
-                const count = this.isBig ? 300 : 80;
-                for(let i=0; i<count; i++) {
-                    particles.push(new Particle(this.x, this.y, this.isBig));
-                }
-                
-                // 触发后续逻辑
-                if(this.isBig) {
-                    setTimeout(() => { phase = 2; }, 500); // 开启散花模式
-                }
-            }
-        }
-
-        function loop() {
-            if (phase === 2 && smallShotsCount > 8 && particles.length === 0) {
-                document.body.removeChild(canvas);
-                return;
-            }
-            
-            requestAnimationFrame(loop);
-            
-            ctx.globalCompositeOperation = 'destination-out';
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-            ctx.fillRect(0, 0, w, h);
-            ctx.globalCompositeOperation = 'source-over';
-
-            // 剧本控制
-            if (phase === 0) { // 第一发：巨型烟花
-                rockets.push(new Rocket(true)); 
-                phase = 1; // 标记已发射
-            } else if (phase === 2) { // 散花阶段
-                if (smallShotsCount < 8 && Math.random() < 0.05) {
-                    rockets.push(new Rocket(false));
-                    smallShotsCount++;
-                }
-            }
-
-            rockets = rockets.filter(r => r.update());
-            rockets.forEach(r => r.draw());
-            
-            particles.forEach(p => p.update());
-            particles = particles.filter(p => p.alpha > 0);
-            particles.forEach(p => p.draw());
-        }
-        
-        // 延迟 800ms 启动，等待页面稳定
-        setTimeout(loop, 800);
+        // 动画结束后移除 DOM
+        setTimeout(() => {
+            if(santa && santa.parentNode) santa.parentNode.removeChild(santa);
+        }, 13000);
     }
 
     // --- 入口 ---
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        initGyroDecorations();
-        initScenarioFireworks();
+        initSnow();
+        initOrnaments();
+        setTimeout(initSantaFlyby, 2000); // 延迟2秒起飞
     } else {
         window.addEventListener('DOMContentLoaded', () => {
-            initGyroDecorations();
-            initScenarioFireworks();
+            initSnow();
+            initOrnaments();
+            setTimeout(initSantaFlyby, 2000);
         });
     }
 })();
