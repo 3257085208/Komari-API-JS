@@ -2,7 +2,7 @@
     // === 配置区域 ===
     // 1. 设置生效日期范围 (格式：YYYY-MM-DD)
     // 2026年春节是2月17日，这里预设为 2月10日 到 2月24日
-    const startDate = new Date("2026-02-10");
+    const startDate = new Date("2026-1-10");
     const endDate = new Date("2026-02-24");
     
     // 2. 设置挂件图片地址 (建议上传到您自己的图床)
